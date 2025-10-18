@@ -88,7 +88,7 @@ contract KipuBank {
         if (msg.value == 0) {
             revert KipuBank__ZeroDeposit();
         }
-        if (address(this).balance > i_bankCap) {
+        if ((address(this).balance + msg.value) > i_bankCap) {
             revert KipuBank__BankCapExceeded(address(this).balance, msg.value);
         }
         
@@ -106,7 +106,7 @@ contract KipuBank {
      */
     function withdraw(uint256 _amount) external withinWithdrawalLimit(_amount) {
         // Checks
-        if (_amount > s_balances[msg.sender]) {
+        if (!_isAllowedToWithdraw(msg.sender, _amount)) {
             revert KipuBank__InsufficientBalance(s_balances[msg.sender], _amount);
         }
         
@@ -118,8 +118,6 @@ contract KipuBank {
         (bool success, ) = payable(msg.sender).call{value: _amount}("");
         if (!success) {
             // If the transfer fails, we revert the state changes.
-            s_balances[msg.sender] += _amount;
-            s_totalWithdrawals -= 1;
             revert KipuBank__TransferFailed();
         }
         
@@ -143,6 +141,6 @@ contract KipuBank {
      * @return true if the withdrawal is allowed, false otherwise.
      */
     function _isAllowedToWithdraw(address _user, uint256 _amount) private view returns (bool) {
-        return (_amount <= s_balances[_user] && _amount <= i_withdrawalThreshold);
+        return (_amount <= s_balances[_user]);
     }
 }
