@@ -70,7 +70,7 @@ contract KipuBankV2 is AccessControl {
     * @param _priceFeedAddress Chainlink's price address (ETH/USD).
     */
     constructor(address _priceFeedAddress) {
-
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(TOKEN_MANAGER_ROLE, msg.sender);
         i_priceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
@@ -82,7 +82,7 @@ contract KipuBankV2 is AccessControl {
      * @param _tokenAddress The address of the ERC20 token contract.
      * @param _amount The amount of tokens to deposit.
      */
-     function depositERC20(address _tokenAddress, uint256 _amount) external {
+     function depositERC20(address _tokenAddress, uint256 _amount) external  {
         // --- Checks ---
         if (_amount <= 0) {
             revert KipuBankV2__AmountMustBeGreaterThanZero();
