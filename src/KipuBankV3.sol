@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20 as IERCSafe} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -99,15 +99,17 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         uint256 _amount
     ) external nonReentrant {
         if (_amount == 0) revert KipuBankV3__AmountMustBeGreaterThanZero();
-        if (_tokenAddress == address(0))
+        if (_tokenAddress == address(0)) {
             revert KipuBankV3__TokenAddressCannotBeZero();
+        }
 
         // If token is USDC -> direct deposit
         if (_tokenAddress == USDC) {
             // ensure USDC decimals = 6
             uint8 decimals = IERC20Metadata(_tokenAddress).decimals();
-            if (decimals != USDC_DECIMALS)
+            if (decimals != USDC_DECIMALS) {
                 revert KipuBankV3__TokenMustBe6Decimals(decimals);
+            }
 
             // check cap
             if (s_totalUsdDeposited + _amount > s_bankCapUsd) {
@@ -135,11 +137,11 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
 
         // For other ERC20 tokens: swap token -> USDC via Uniswap V2
         // We estimate amountsOut first to check bank cap (use router.getAmountsOut)
-        address[2] memory path;
+        address[] memory path = new address[](2);
         path[0] = _tokenAddress;
         path[1] = USDC;
 
-        uint[] memory amountsOut;
+        uint256[] memory amountsOut;
         // getAmountsOut could revert if pair doesn't exist or path invalid -> bubble up
         amountsOut = uniswapRouter.getAmountsOut(_amount, path);
         uint256 expectedUsdcOut = amountsOut[amountsOut.length - 1];
@@ -165,8 +167,8 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
 
         // Approve router
         // safeApprove pattern: reset to 0 then set
-        IERCSafe(_tokenAddress).safeApprove(address(uniswapRouter), 0);
-        IERCSafe(_tokenAddress).safeApprove(address(uniswapRouter), _amount);
+        IERCSafe(_tokenAddress).approve(address(uniswapRouter), 0);
+        IERCSafe(_tokenAddress).approve(address(uniswapRouter), _amount);
 
         // record USDC balance before swap to measure exact received
         uint256 usdcBefore = IERC20(USDC).balanceOf(address(this));
@@ -181,7 +183,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
                 address(this),
                 deadline
             )
-        returns (uint[] memory outAmounts) {
+        returns (uint256[] memory) {
             // success
         } catch {
             revert KipuBankV3__SwapFailed();
@@ -220,12 +222,15 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         if (msg.value == 0) revert KipuBankV3__AmountMustBeGreaterThanZero();
 
         // Build path [WETH, USDC]
-        address[2] memory path;
+        address[] memory path = new address[](2);
         path[0] = WETH;
         path[1] = USDC;
 
         // estimate amountsOut
-        uint[] memory amountsOut = uniswapRouter.getAmountsOut(msg.value, path);
+        uint256[] memory amountsOut = uniswapRouter.getAmountsOut(
+            msg.value,
+            path
+        );
         uint256 expectedUsdcOut = amountsOut[amountsOut.length - 1];
         uint256 minOut = (expectedUsdcOut * 995) / 1000;
 
@@ -249,7 +254,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
                 address(this),
                 deadline
             )
-        returns (uint[] memory outAmounts) {
+        returns (uint256[] memory) {
             // success
         } catch {
             revert KipuBankV3__SwapFailed();
@@ -287,8 +292,9 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         if (_amount == 0) revert KipuBankV3__AmountMustBeGreaterThanZero();
 
         uint256 balance = s_usdcBalances[msg.sender];
-        if (balance < _amount)
+        if (balance < _amount) {
             revert KipuBankV3__InsufficientBalance(balance, _amount);
+        }
 
         s_usdcBalances[msg.sender] = balance - _amount;
         s_totalUsdDeposited -= _amount;

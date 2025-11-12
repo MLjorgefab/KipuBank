@@ -8,7 +8,7 @@ pragma solidity ^0.8.17;
  */
 contract KipuBank {
     // State Variables
-    
+
     /// @notice Maps user addresses to their ETH balance.
     mapping(address => uint256) private s_balances;
 
@@ -28,7 +28,7 @@ contract KipuBank {
 
     /// @notice Thrown when a user tries to deposit 0 ETH.
     error KipuBank__ZeroDeposit();
-    
+
     /// @notice Thrown when a deposit would exceed the bank's total capacity.
     /// @param currentBalance The current total ETH held by the bank.
     /// @param depositAmount The amount the user tried to deposit.
@@ -91,11 +91,11 @@ contract KipuBank {
         if ((address(this).balance + msg.value) > i_bankCap) {
             revert KipuBank__BankCapExceeded(address(this).balance, msg.value);
         }
-        
+
         // Effects
         s_balances[msg.sender] += msg.value;
         s_totalDeposits += 1;
-        
+
         emit Deposited(msg.sender, msg.value);
     }
 
@@ -109,21 +109,21 @@ contract KipuBank {
         if (!_isAllowedToWithdraw(msg.sender, _amount)) {
             revert KipuBank__InsufficientBalance(s_balances[msg.sender], _amount);
         }
-        
+
         // Effects
         s_balances[msg.sender] -= _amount;
         s_totalWithdrawals += 1;
-        
+
         // Interactions
-        (bool success, ) = payable(msg.sender).call{value: _amount}("");
+        (bool success,) = payable(msg.sender).call{value: _amount}("");
         if (!success) {
             // If the transfer fails, we revert the state changes.
             revert KipuBank__TransferFailed();
         }
-        
+
         emit Withdrawn(msg.sender, _amount);
     }
-    
+
     // View & Private Functions
 
     /**
