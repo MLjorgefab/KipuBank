@@ -11,16 +11,14 @@ contract KipuBankV3Test is Test {
     IERC20 internal weth;
 
     // --- Sepolia Addresses ---
-    address internal constant ROUTER =
-        0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
+    address internal constant ROUTER = 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
     address internal constant USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
     address internal WETH_ADDRESS;
 
     // --- Test Config ---
     uint256 internal constant INITIAL_CAP = 10_000_000 * 1e6; // $10M Cap
     address internal constant USER = address(0x1);
-    address internal constant USDC_WHALE =
-        0xf89d7b9c864f589bbF53a82105107622B35EaA40;
+    address internal constant USDC_WHALE = 0xf89d7b9c864f589bbF53a82105107622B35EaA40;
 
     function setUp() public {
         bank = new KipuBankV3(ROUTER, USDC, INITIAL_CAP);
@@ -101,11 +99,7 @@ contract KipuBankV3Test is Test {
 
         vm.startPrank(USER);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                KipuBankV3.KipuBankV3__InsufficientBalance.selector,
-                depositAmount,
-                withdrawAmount
-            )
+            abi.encodeWithSelector(KipuBankV3.KipuBankV3__InsufficientBalance.selector, depositAmount, withdrawAmount)
         );
         bank.withdrawUSDC(withdrawAmount);
         vm.stopPrank();
@@ -118,12 +112,7 @@ contract KipuBankV3Test is Test {
 
         vm.startPrank(USER);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                KipuBankV3.KipuBankV3__DepositExceedsBankCap.selector,
-                0,
-                1000 * 1e6,
-                depositAmount
-            )
+            abi.encodeWithSelector(KipuBankV3.KipuBankV3__DepositExceedsBankCap.selector, 0, 1000 * 1e6, depositAmount)
         );
         bank.depositERC20(USDC, depositAmount);
         vm.stopPrank();

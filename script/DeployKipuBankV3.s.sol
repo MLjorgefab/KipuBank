@@ -39,15 +39,14 @@ contract DeployKipuBankV3 is Script {
      * @dev Replace these addresses if you are using a different network
      */
     function getSepoliaConfig() internal pure returns (NetworkConfig memory) {
-        return
-            NetworkConfig({
-                // Uniswap V2 Router address on Sepolia
-                router: 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3,
-                // USDC address on Sepolia (6 decimals)
-                usdc: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238,
-                // Initial Cap: $1,000,000 USDC (1M * 10**6)
-                initialCap: 1_000_000e6
-            });
+        return NetworkConfig({
+            // Uniswap V2 Router address on Sepolia
+            router: 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3,
+            // USDC address on Sepolia (6 decimals)
+            usdc: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238,
+            // Initial Cap: $1,000,000 USDC (1M * 10**6)
+            initialCap: 1_000_000e6
+        });
     }
 
     // --- Script Entrypoint ---
@@ -56,11 +55,7 @@ contract DeployKipuBankV3 is Script {
         vm.startBroadcast();
 
         // 2. Deploy the contract!
-        KipuBankV3 kipuBankV3 = new KipuBankV3(
-            activeConfig.router,
-            activeConfig.usdc,
-            activeConfig.initialCap
-        );
+        KipuBankV3 kipuBankV3 = new KipuBankV3(activeConfig.router, activeConfig.usdc, activeConfig.initialCap);
 
         // 3. Stop the broadcast
         vm.stopBroadcast();

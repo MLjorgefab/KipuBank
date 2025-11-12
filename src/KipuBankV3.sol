@@ -36,31 +36,15 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
     // --- Errors
     error KipuBankV3__AmountMustBeGreaterThanZero();
     error KipuBankV3__TokenAddressCannotBeZero();
-    error KipuBankV3__InsufficientBalance(
-        uint256 balance,
-        uint256 amountToWithdraw
-    );
-    error KipuBankV3__DepositExceedsBankCap(
-        uint256 totalDeposited,
-        uint256 cap,
-        uint256 depositValue
-    );
+    error KipuBankV3__InsufficientBalance(uint256 balance, uint256 amountToWithdraw);
+    error KipuBankV3__DepositExceedsBankCap(uint256 totalDeposited, uint256 cap, uint256 depositValue);
     error KipuBankV3__TokenMustBe6Decimals(uint8 decimals);
     error KipuBankV3__TransferFailed();
     error KipuBankV3__SwapFailed();
 
     // --- Events
-    event Deposit(
-        address indexed user,
-        address indexed tokenIn,
-        uint256 amountIn,
-        uint256 usdcReceived
-    );
-    event Withdrawal(
-        address indexed user,
-        address indexed tokenOut,
-        uint256 amountOut
-    );
+    event Deposit(address indexed user, address indexed tokenIn, uint256 amountIn, uint256 usdcReceived);
+    event Withdrawal(address indexed user, address indexed tokenOut, uint256 amountOut);
     event BankCapUpdated(uint256 newCap);
 
     // --- Constructor
@@ -94,10 +78,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
      * @param _tokenAddress token to deposit
      * @param _amount amount of tokens to deposit (token decimals)
      */
-    function depositERC20(
-        address _tokenAddress,
-        uint256 _amount
-    ) external nonReentrant {
+    function depositERC20(address _tokenAddress, uint256 _amount) external nonReentrant {
         if (_amount == 0) revert KipuBankV3__AmountMustBeGreaterThanZero();
         if (_tokenAddress == address(0)) {
             revert KipuBankV3__TokenAddressCannotBeZero();
@@ -113,19 +94,11 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
 
             // check cap
             if (s_totalUsdDeposited + _amount > s_bankCapUsd) {
-                revert KipuBankV3__DepositExceedsBankCap(
-                    s_totalUsdDeposited,
-                    s_bankCapUsd,
-                    _amount
-                );
+                revert KipuBankV3__DepositExceedsBankCap(s_totalUsdDeposited, s_bankCapUsd, _amount);
             }
 
             // transfer USDC from user
-            IERCSafe(_tokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
+            IERCSafe(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
 
             // update state
             s_totalUsdDeposited += _amount;
@@ -151,19 +124,11 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
 
         // Ensure bank cap would not be exceeded by the conservative minOut
         if (s_totalUsdDeposited + minOut > s_bankCapUsd) {
-            revert KipuBankV3__DepositExceedsBankCap(
-                s_totalUsdDeposited,
-                s_bankCapUsd,
-                minOut
-            );
+            revert KipuBankV3__DepositExceedsBankCap(s_totalUsdDeposited, s_bankCapUsd, minOut);
         }
 
         // Pull tokens from user to this contract
-        IERCSafe(_tokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
+        IERCSafe(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
 
         // Approve router
         // safeApprove pattern: reset to 0 then set
@@ -175,17 +140,12 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
 
         // do swap
         uint256 deadline = block.timestamp + 300; // 5 minutes
-        try
-            uniswapRouter.swapExactTokensForTokens(
-                _amount,
-                minOut,
-                path,
-                address(this),
-                deadline
-            )
-        returns (uint256[] memory) {
-            // success
-        } catch {
+        try uniswapRouter.swapExactTokensForTokens(_amount, minOut, path, address(this), deadline) returns (
+            uint256[] memory
+        ) {
+        // success
+        }
+        catch {
             revert KipuBankV3__SwapFailed();
         }
 
@@ -200,11 +160,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         if (s_totalUsdDeposited + usdcReceived > s_bankCapUsd) {
             // This is a safety check: revert to avoid exceeding cap.
             // Note: since we already swapped tokens -> USDC, revert here will revert whole tx and tokens return to user.
-            revert KipuBankV3__DepositExceedsBankCap(
-                s_totalUsdDeposited,
-                s_bankCapUsd,
-                usdcReceived
-            );
+            revert KipuBankV3__DepositExceedsBankCap(s_totalUsdDeposited, s_bankCapUsd, usdcReceived);
         }
 
         // Update state
@@ -227,36 +183,25 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         path[1] = USDC;
 
         // estimate amountsOut
-        uint256[] memory amountsOut = uniswapRouter.getAmountsOut(
-            msg.value,
-            path
-        );
+        uint256[] memory amountsOut = uniswapRouter.getAmountsOut(msg.value, path);
         uint256 expectedUsdcOut = amountsOut[amountsOut.length - 1];
         uint256 minOut = (expectedUsdcOut * 995) / 1000;
 
         // check cap against conservative minOut
         if (s_totalUsdDeposited + minOut > s_bankCapUsd) {
-            revert KipuBankV3__DepositExceedsBankCap(
-                s_totalUsdDeposited,
-                s_bankCapUsd,
-                minOut
-            );
+            revert KipuBankV3__DepositExceedsBankCap(s_totalUsdDeposited, s_bankCapUsd, minOut);
         }
 
         // perform swapExactETHForTokens
         uint256 usdcBefore = IERC20(USDC).balanceOf(address(this));
         uint256 deadline = block.timestamp + 300;
 
-        try
-            uniswapRouter.swapExactETHForTokens{value: msg.value}(
-                minOut,
-                path,
-                address(this),
-                deadline
-            )
-        returns (uint256[] memory) {
-            // success
-        } catch {
+        try uniswapRouter.swapExactETHForTokens{value: msg.value}(minOut, path, address(this), deadline) returns (
+            uint256[] memory
+        ) {
+        // success
+        }
+        catch {
             revert KipuBankV3__SwapFailed();
         }
 
@@ -266,22 +211,13 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
         if (usdcReceived == 0) revert KipuBankV3__SwapFailed();
 
         if (s_totalUsdDeposited + usdcReceived > s_bankCapUsd) {
-            revert KipuBankV3__DepositExceedsBankCap(
-                s_totalUsdDeposited,
-                s_bankCapUsd,
-                usdcReceived
-            );
+            revert KipuBankV3__DepositExceedsBankCap(s_totalUsdDeposited, s_bankCapUsd, usdcReceived);
         }
 
         s_totalUsdDeposited += usdcReceived;
         s_usdcBalances[msg.sender] += usdcReceived;
 
-        emit Deposit(
-            msg.sender,
-            NATIVE_ETH_ADDRESS_ZERO,
-            msg.value,
-            usdcReceived
-        );
+        emit Deposit(msg.sender, NATIVE_ETH_ADDRESS_ZERO, msg.value, usdcReceived);
     }
 
     /**
@@ -311,9 +247,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard {
      * @notice Set new bank cap (in USDC 6 decimals)
      * @param _newCapUsd The new bank cap, denominated in USDC (6 decimals).
      */
-    function setBankCap(
-        uint256 _newCapUsd
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBankCap(uint256 _newCapUsd) external onlyRole(DEFAULT_ADMIN_ROLE) {
         s_bankCapUsd = _newCapUsd;
         emit BankCapUpdated(_newCapUsd);
     }
